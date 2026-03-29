@@ -338,24 +338,24 @@
         }
 
         this.animTime += 0.12;
-        this.idleBreath = Math.sin(this.animTime * 2) * 1.8;
+        this.idleBreath = Math.sin(this.animTime * 2.8) * 2.2;
 
         const isWalking = Math.abs(this.vx) > 0.2 && this.onGround;
         if (isWalking) {
-          this.walkCycle += 0.28;
-          this.walkBounce = Math.abs(Math.sin(this.walkCycle)) * 7;
-          this.bodyTilt = Math.sin(this.walkCycle) * 0.035;
-          this.armSwing = Math.sin(this.walkCycle) * 18;
-          this.legSwing = Math.sin(this.walkCycle) * 14;
+          this.walkCycle += 0.26;
+          this.walkBounce = Math.abs(Math.sin(this.walkCycle)) * 5.4;
+          this.bodyTilt = Math.sin(this.walkCycle) * 0.024;
+          this.armSwing = Math.sin(this.walkCycle) * 10;
+          this.legSwing = Math.sin(this.walkCycle) * 8;
         } else {
-          this.walkBounce *= 0.82;
-          this.bodyTilt *= 0.82;
-          this.armSwing *= 0.82;
-          this.legSwing *= 0.82;
+          this.walkBounce *= 0.84;
+          this.bodyTilt = this.bodyTilt * 0.84 + Math.sin(this.animTime * 1.9) * 0.002;
+          this.armSwing *= 0.84;
+          this.legSwing *= 0.84;
         }
 
-        const targetAttackExtend = this.isAttacking ? 26 : 0;
-        this.attackExtend += (targetAttackExtend - this.attackExtend) * 0.35;
+        const targetAttackExtend = this.isAttacking ? 22 : 0;
+        this.attackExtend += (targetAttackExtend - this.attackExtend) * 0.42;
 
         if (this.isAttacking && this.hitCooldown === 0 && this.collidesWith(opponent)) {
           opponent.takeHit(10, this.facing);
@@ -406,73 +406,43 @@
 
       drawImageFighter() {
         const centerX = this.x + this.width / 2;
-        const centerY = this.y + this.height / 2 + this.walkBounce * 0.5 + this.idleBreath;
+        const centerY = this.y + this.height / 2 + this.idleBreath + this.walkBounce * 0.38;
+        const isWalking = Math.abs(this.vx) > 0.2 && this.onGround;
+
+        let scaleX = 1;
+        let scaleY = 1;
+        let extraTilt = this.bodyTilt;
+        let moveX = 0;
+        let moveY = 0;
+
+        if (isWalking) {
+          const cycle = Math.sin(this.walkCycle);
+          scaleX = 1 + Math.abs(cycle) * 0.018;
+          scaleY = 1 - Math.abs(cycle) * 0.024;
+          moveX = cycle * 3.2;
+          moveY = Math.abs(cycle) * -1.2;
+        } else {
+          moveX = Math.sin(this.animTime * 1.6) * 1.2;
+        }
+
+        if (!this.onGround) {
+          scaleX = 0.988;
+          scaleY = 1.018;
+          moveY -= 3;
+        }
+
+        if (this.isAttacking) {
+          moveX += this.attackExtend * 0.26;
+          extraTilt += this.facing === 1 ? -0.04 : 0.04;
+          scaleX += 0.025;
+          scaleY -= 0.015;
+        }
 
         ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.scale(this.facing, 1);
-        ctx.rotate(this.bodyTilt);
-
-        // brazo trasero
-        ctx.save();
-        ctx.translate(-18, -34);
-        ctx.rotate((-30 - this.armSwing * 0.45) * Math.PI / 180);
-        ctx.strokeStyle = '#d9c2a2';
-        ctx.lineWidth = 10;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-10, 42);
-        ctx.stroke();
-        ctx.restore();
-
-        // pierna trasera
-        ctx.save();
-        ctx.translate(-12, 72);
-        ctx.rotate((this.legSwing * 0.8) * Math.PI / 180);
-        ctx.strokeStyle = '#1f2e4a';
-        ctx.lineWidth = 12;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-4, 74);
-        ctx.stroke();
-        ctx.restore();
-
-        // cuerpo principal
-        ctx.drawImage(this.image, -this.width / 2, -this.height / 2, this.width, this.height);
-
-        // pierna delantera
-        ctx.save();
-        ctx.translate(18, 70);
-        ctx.rotate((-this.legSwing) * Math.PI / 180);
-        ctx.strokeStyle = '#273c61';
-        ctx.lineWidth = 13;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(6, 82);
-        ctx.stroke();
-        ctx.restore();
-
-        // brazo delantero estilo pelea
-        ctx.save();
-        ctx.translate(20, -30);
-        const attackAngle = this.isAttacking ? -10 : (-50 + this.armSwing * 0.35);
-        ctx.rotate(attackAngle * Math.PI / 180);
-        ctx.strokeStyle = '#efd0a9';
-        ctx.lineWidth = 12;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(16 + this.attackExtend, 34);
-        ctx.stroke();
-
-        ctx.fillStyle = '#efd0a9';
-        ctx.beginPath();
-        ctx.arc(16 + this.attackExtend, 34, 8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-
+        ctx.translate(centerX, centerY + moveY);
+        ctx.scale(this.facing * scaleX, scaleY);
+        ctx.rotate(extraTilt);
+        ctx.drawImage(this.image, -this.width / 2 + moveX, -this.height / 2, this.width, this.height);
         ctx.restore();
       }
 
@@ -509,7 +479,7 @@
 
       draw() {
         const centerX = this.x + this.width / 2;
-        const shadowWidth = this.image ? 48 + Math.abs(this.legSwing) * 0.5 : 42;
+        const shadowWidth = this.image ? 48 + Math.abs(this.legSwing) * 0.35 : 42;
 
         ctx.fillStyle = 'rgba(0,0,0,0.2)';
         ctx.beginPath();
@@ -530,7 +500,7 @@
         ctx.fillStyle = 'rgba(255,255,255,0.95)';
         ctx.font = 'bold 16px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(this.name, this.x + this.width / 2, this.y - 10);
+        ctx.fillText(this.name, this.x + this.width / 2, this.y - 18);
       }
     }
 
