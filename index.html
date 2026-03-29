@@ -6,7 +6,6 @@
   <title>Juego de Pelea - ISAM Fight</title>
   <style>
     * { box-sizing: border-box; }
-
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
@@ -154,11 +153,9 @@
         flex-direction: column;
         align-items: stretch;
       }
-
       .controls {
         grid-template-columns: 1fr;
       }
-
       .message h1 { font-size: 26px; }
       .timer { font-size: 24px; }
     }
@@ -168,33 +165,25 @@
   <div class="game-wrapper">
     <div class="hud">
       <div class="panel health-box">
-        <div class="label">Panchin</div>
-        <div class="health-bar">
-          <div id="p1Health" class="health-fill p1-health"></div>
-        </div>
+        <div class="label">Jugador 1</div>
+        <div class="health-bar"><div id="p1Health" class="health-fill p1-health"></div></div>
       </div>
-
       <div class="panel timer" id="timer">60</div>
-
       <div class="panel health-box">
         <div class="label">Jugador 2</div>
-        <div class="health-bar">
-          <div id="p2Health" class="health-fill p2-health"></div>
-        </div>
+        <div class="health-bar"><div id="p2Health" class="health-fill p2-health"></div></div>
       </div>
     </div>
 
     <div class="canvas-wrap">
       <canvas id="game" width="1100" height="600"></canvas>
-
       <div class="overlay" id="overlay">
         <div class="message" id="messageBox">
           <h1>ISAM Fight</h1>
-          <p>Juego de pelea simple en HTML, CSS y JavaScript.</p>
-
+          <p>Juego de pelea simple en HTML, CSS y JavaScript listo para subir a Vercel.</p>
           <div class="controls">
             <div>
-              <strong>Panchin</strong><br>
+              <strong>Jugador 1</strong><br>
               <span class="kbd">A</span> izquierda
               <span class="kbd">D</span> derecha
               <span class="kbd">W</span> salto
@@ -208,15 +197,12 @@
               <span class="kbd">L</span> golpe
             </div>
           </div>
-
           <p>Presiona <span class="kbd">ENTER</span> para comenzar o reiniciar.</p>
         </div>
       </div>
     </div>
 
-    <div class="footer">
-      Sube también el archivo Panchin.png junto con este index.html
-    </div>
+    <div class="footer">Puedes cambiar colores, nombres, escenario y personajes fácilmente desde el código.</div>
   </div>
 
   <script>
@@ -239,7 +225,7 @@
     let timerInterval = null;
 
     const player1Image = new Image();
-    player1Image.src = "Panchin.png";
+    player1Image.src = 'Panchin.png';
 
     function clamp(value, min, max) {
       return Math.max(min, Math.min(max, value));
@@ -249,7 +235,7 @@
       constructor({ x, y, color, name, controls, facing = 1, image = null }) {
         this.x = x;
         this.y = y;
-        this.width = image ? 130 : 70;
+        this.width = image ? 130 : 76;
         this.height = image ? 260 : 140;
         this.color = color;
         this.name = name;
@@ -271,17 +257,21 @@
         this.attackFrames = 0;
 
         this.animTime = 0;
+        this.walkCycle = 0;
         this.walkBounce = 0;
-        this.walkTilt = 0;
-        this.punchOffset = 0;
+        this.bodyTilt = 0;
+        this.armSwing = 0;
+        this.legSwing = 0;
+        this.idleBreath = 0;
+        this.attackExtend = 0;
       }
 
       get attackBox() {
-        const attackWidth = this.image ? 65 : 55;
-        const attackHeight = this.image ? 40 : 30;
+        const attackWidth = this.image ? 74 : 55;
+        const attackHeight = this.image ? 46 : 30;
         return {
-          x: this.facing === 1 ? this.x + this.width - 10 : this.x - attackWidth + 10,
-          y: this.image ? this.y + 80 : this.y + 40,
+          x: this.facing === 1 ? this.x + this.width - 2 : this.x - attackWidth + 2,
+          y: this.image ? this.y + 82 : this.y + 40,
           width: attackWidth,
           height: attackHeight
         };
@@ -299,9 +289,13 @@
         this.hitCooldown = 0;
         this.attackFrames = 0;
         this.animTime = 0;
+        this.walkCycle = 0;
         this.walkBounce = 0;
-        this.walkTilt = 0;
-        this.punchOffset = 0;
+        this.bodyTilt = 0;
+        this.armSwing = 0;
+        this.legSwing = 0;
+        this.idleBreath = 0;
+        this.attackExtend = 0;
       }
 
       update(opponent) {
@@ -343,17 +337,25 @@
           }
         }
 
-        this.animTime += 0.18;
+        this.animTime += 0.12;
+        this.idleBreath = Math.sin(this.animTime * 2) * 1.8;
 
-        if (Math.abs(this.vx) > 0 && this.onGround) {
-          this.walkBounce = Math.sin(this.animTime * 8) * 6;
-          this.walkTilt = Math.sin(this.animTime * 8) * 0.03;
+        const isWalking = Math.abs(this.vx) > 0.2 && this.onGround;
+        if (isWalking) {
+          this.walkCycle += 0.28;
+          this.walkBounce = Math.abs(Math.sin(this.walkCycle)) * 7;
+          this.bodyTilt = Math.sin(this.walkCycle) * 0.035;
+          this.armSwing = Math.sin(this.walkCycle) * 18;
+          this.legSwing = Math.sin(this.walkCycle) * 14;
         } else {
-          this.walkBounce *= 0.75;
-          this.walkTilt *= 0.75;
+          this.walkBounce *= 0.82;
+          this.bodyTilt *= 0.82;
+          this.armSwing *= 0.82;
+          this.legSwing *= 0.82;
         }
 
-        this.punchOffset = this.isAttacking ? 18 : 0;
+        const targetAttackExtend = this.isAttacking ? 26 : 0;
+        this.attackExtend += (targetAttackExtend - this.attackExtend) * 0.35;
 
         if (this.isAttacking && this.hitCooldown === 0 && this.collidesWith(opponent)) {
           opponent.takeHit(10, this.facing);
@@ -402,80 +404,127 @@
         );
       }
 
+      drawImageFighter() {
+        const centerX = this.x + this.width / 2;
+        const centerY = this.y + this.height / 2 + this.walkBounce * 0.5 + this.idleBreath;
+
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.scale(this.facing, 1);
+        ctx.rotate(this.bodyTilt);
+
+        // brazo trasero
+        ctx.save();
+        ctx.translate(-18, -34);
+        ctx.rotate((-30 - this.armSwing * 0.45) * Math.PI / 180);
+        ctx.strokeStyle = '#d9c2a2';
+        ctx.lineWidth = 10;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-10, 42);
+        ctx.stroke();
+        ctx.restore();
+
+        // pierna trasera
+        ctx.save();
+        ctx.translate(-12, 72);
+        ctx.rotate((this.legSwing * 0.8) * Math.PI / 180);
+        ctx.strokeStyle = '#1f2e4a';
+        ctx.lineWidth = 12;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-4, 74);
+        ctx.stroke();
+        ctx.restore();
+
+        // cuerpo principal
+        ctx.drawImage(this.image, -this.width / 2, -this.height / 2, this.width, this.height);
+
+        // pierna delantera
+        ctx.save();
+        ctx.translate(18, 70);
+        ctx.rotate((-this.legSwing) * Math.PI / 180);
+        ctx.strokeStyle = '#273c61';
+        ctx.lineWidth = 13;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(6, 82);
+        ctx.stroke();
+        ctx.restore();
+
+        // brazo delantero estilo pelea
+        ctx.save();
+        ctx.translate(20, -30);
+        const attackAngle = this.isAttacking ? -10 : (-50 + this.armSwing * 0.35);
+        ctx.rotate(attackAngle * Math.PI / 180);
+        ctx.strokeStyle = '#efd0a9';
+        ctx.lineWidth = 12;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(16 + this.attackExtend, 34);
+        ctx.stroke();
+
+        ctx.fillStyle = '#efd0a9';
+        ctx.beginPath();
+        ctx.arc(16 + this.attackExtend, 34, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.restore();
+      }
+
+      drawSimpleFighter() {
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y + 20, this.width, this.height - 20);
+
+        ctx.fillStyle = '#ffd6b3';
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + 18, 24, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2 - 8, this.y + 15, 2.5, 0, Math.PI * 2);
+        ctx.arc(this.x + this.width / 2 + 8, this.y + 15, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        const armY = this.y + 55;
+        ctx.fillStyle = '#ffd6b3';
+        ctx.fillRect(this.x - 10, armY, 12, 40);
+        ctx.fillRect(this.x + this.width - 2, armY, 12, 40);
+
+        ctx.fillStyle = '#111827';
+        ctx.fillRect(this.x + 10, this.y + this.height, 16, 34);
+        ctx.fillRect(this.x + this.width - 26, this.y + this.height, 16, 34);
+
+        if (this.isAttacking) {
+          const a = this.attackBox;
+          ctx.fillStyle = 'rgba(255,255,255,0.28)';
+          ctx.fillRect(a.x, a.y, a.width, a.height);
+        }
+      }
+
       draw() {
         const centerX = this.x + this.width / 2;
+        const shadowWidth = this.image ? 48 + Math.abs(this.legSwing) * 0.5 : 42;
 
         ctx.fillStyle = 'rgba(0,0,0,0.2)';
         ctx.beginPath();
-        ctx.ellipse(centerX, floorY + 8, 42, 10, 0, 0, Math.PI * 2);
+        ctx.ellipse(centerX, floorY + 8, shadowWidth, 10, 0, 0, Math.PI * 2);
         ctx.fill();
 
         if (this.image && this.image.complete) {
-          ctx.save();
-
-          const drawX = this.x + this.width / 2;
-          const drawY = this.y + this.height / 2 + this.walkBounce;
-
-          ctx.translate(drawX, drawY);
-          ctx.scale(this.facing, 1);
-          ctx.rotate(this.walkTilt);
-
-          ctx.drawImage(
-            this.image,
-            -this.width / 2 + (this.facing === 1 ? this.punchOffset : -this.punchOffset),
-            -this.height / 2,
-            this.width,
-            this.height
-          );
-
-          ctx.restore();
-
+          this.drawImageFighter();
           if (this.isAttacking) {
             const a = this.attackBox;
-            ctx.fillStyle = 'rgba(255,255,255,0.18)';
+            ctx.fillStyle = 'rgba(255,255,255,0.14)';
             ctx.fillRect(a.x, a.y, a.width, a.height);
           }
         } else {
-          ctx.fillStyle = this.color;
-          ctx.fillRect(this.x, this.y + 20, this.width, this.height - 20);
-
-          ctx.fillStyle = '#ffd6b3';
-          ctx.beginPath();
-          ctx.arc(this.x + this.width / 2, this.y + 18, 24, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = '#111';
-          ctx.beginPath();
-          ctx.arc(this.x + this.width / 2 - 8, this.y + 15, 2.5, 0, Math.PI * 2);
-          ctx.arc(this.x + this.width / 2 + 8, this.y + 15, 2.5, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = '#111827';
-          ctx.fillRect(this.x + 10, this.y + this.height, 16, 34);
-          ctx.fillRect(this.x + this.width - 26, this.y + this.height, 16, 34);
-
-          ctx.fillStyle = '#ffd6b3';
-          const armY = this.y + 55;
-          ctx.fillRect(this.x - 10, armY, 12, 40);
-          ctx.fillRect(this.x + this.width - 2, armY, 12, 40);
-
-          if (this.isAttacking) {
-            const a = this.attackBox;
-            ctx.fillStyle = 'rgba(255,255,255,0.28)';
-            ctx.fillRect(a.x, a.y, a.width, a.height);
-
-            ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            if (this.facing === 1) {
-              ctx.moveTo(this.x + this.width, armY + 10);
-              ctx.lineTo(a.x + a.width, a.y + 10);
-            } else {
-              ctx.moveTo(this.x, armY + 10);
-              ctx.lineTo(a.x, a.y + 10);
-            }
-            ctx.stroke();
-          }
+          this.drawSimpleFighter();
         }
 
         ctx.fillStyle = 'rgba(255,255,255,0.95)';
