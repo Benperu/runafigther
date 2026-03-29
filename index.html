@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Juego de Pelea - ISAM Fight</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #101522 0%, #1f2a44 100%);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .game-wrapper {
+      width: 100%;
+      max-width: 1100px;
+      padding: 16px;
+    }
+
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .panel {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 16px;
+      padding: 12px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+
+    .health-box {
+      flex: 1;
+    }
+
+    .label {
+      font-size: 14px;
+      margin-bottom: 8px;
+      opacity: 0.9;
+    }
+
+    .health-bar {
+      width: 100%;
+      height: 24px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .health-fill {
+      height: 100%;
+      width: 100%;
+      transition: width 0.2s linear;
+    }
+
+    .p1-health { background: linear-gradient(90deg, #22c55e, #84cc16); }
+    .p2-health { background: linear-gradient(90deg, #ef4444, #f97316); }
+
+    .timer {
+      min-width: 110px;
+      text-align: center;
+      font-size: 30px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      border-radius: 22px;
+      overflow: hidden;
+      border: 2px solid rgba(255,255,255,0.12);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      background: linear-gradient(180deg, #66c7ff 0%, #8bd3ff 52%, #5b8d3b 52%, #3f6f2d 100%);
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .message {
+      background: rgba(0,0,0,0.45);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 20px;
+      padding: 20px 26px;
+      max-width: 600px;
+    }
+
+    .message h1 {
+      margin: 0 0 8px;
+      font-size: 34px;
+    }
+
+    .message p {
+      margin: 8px 0;
+      font-size: 16px;
+      line-height: 1.5;
+      opacity: 0.95;
+    }
+
+    .controls {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    .footer {
+      margin-top: 12px;
+      text-align: center;
+      opacity: 0.85;
+      font-size: 14px;
+    }
+
+    .kbd {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.18);
+      margin: 0 2px;
+    }
+
+    .hidden { display: none; }
+
+    @media (max-width: 768px) {
+      .hud {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .controls {
+        grid-template-columns: 1fr;
+      }
+      .message h1 { font-size: 26px; }
+      .timer { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-wrapper">
+    <div class="hud">
+      <div class="panel health-box">
+        <div class="label">Jugador 1</div>
+        <div class="health-bar"><div id="p1Health" class="health-fill p1-health"></div></div>
+      </div>
+      <div class="panel timer" id="timer">60</div>
+      <div class="panel health-box">
+        <div class="label">Jugador 2</div>
+        <div class="health-bar"><div id="p2Health" class="health-fill p2-health"></div></div>
+      </div>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="game" width="1100" height="600"></canvas>
+      <div class="overlay" id="overlay">
+        <div class="message" id="messageBox">
+          <h1>ISAM Fight</h1>
+          <p>Juego de pelea simple en HTML, CSS y JavaScript listo para subir a Vercel.</p>
+          <div class="controls">
+            <div>
+              <strong>Jugador 1</strong><br>
+              <span class="kbd">A</span> izquierda
+              <span class="kbd">D</span> derecha
+              <span class="kbd">W</span> salto
+              <span class="kbd">F</span> golpe
+            </div>
+            <div>
+              <strong>Jugador 2</strong><br>
+              <span class="kbd">←</span> izquierda
+              <span class="kbd">→</span> derecha
+              <span class="kbd">↑</span> salto
+              <span class="kbd">L</span> golpe
+            </div>
+          </div>
+          <p>Presiona <span class="kbd">ENTER</span> para comenzar o reiniciar.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">Puedes cambiar colores, nombres, escenario y personajes fácilmente desde el código.</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    const overlay = document.getElementById('overlay');
+    const messageBox = document.getElementById('messageBox');
+    const timerEl = document.getElementById('timer');
+    const p1HealthEl = document.getElementById('p1Health');
+    const p2HealthEl = document.getElementById('p2Health');
+
+    const gravity = 0.75;
+    const floorY = 500;
+    const keys = {};
+
+    let gameStarted = false;
+    let gameOver = false;
+    let timer = 60;
+    let timerInterval = null;
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    class Fighter {
+      constructor({ x, y, color, name, controls, facing = 1 }) {
+        this.x = x;
+        this.y = y;
+        this.width = 70;
+        this.height = 140;
+        this.color = color;
+        this.name = name;
+        this.controls = controls;
+        this.facing = facing;
+
+        this.vx = 0;
+        this.vy = 0;
+        this.speed = 5;
+        this.jumpForce = -15;
+
+        this.health = 100;
+        this.isAttacking = false;
+        this.attackCooldown = 0;
+        this.hitCooldown = 0;
+        this.onGround = false;
+        this.attackDuration = 12;
+        this.attackFrames = 0;
+      }
+
+      get attackBox() {
+        const attackWidth = 55;
+        const attackHeight = 30;
+        return {
+          x: this.facing === 1 ? this.x + this.width : this.x - attackWidth,
+          y: this.y + 40,
+          width: attackWidth,
+          height: attackHeight
+        };
+      }
+
+      reset(x, facing) {
+        this.x = x;
+        this.y = floorY - this.height;
+        this.vx = 0;
+        this.vy = 0;
+        this.health = 100;
+        this.facing = facing;
+        this.isAttacking = false;
+        this.attackCooldown = 0;
+        this.hitCooldown = 0;
+        this.attackFrames = 0;
+      }
+
+      update(opponent) {
+        if (!gameStarted || gameOver) return;
+
+        this.vx = 0;
+
+        if (keys[this.controls.left]) {
+          this.vx = -this.speed;
+          this.facing = -1;
+        }
+        if (keys[this.controls.right]) {
+          this.vx = this.speed;
+          this.facing = 1;
+        }
+
+        this.x += this.vx;
+        this.vy += gravity;
+        this.y += this.vy;
+
+        if (this.y + this.height >= floorY) {
+          this.y = floorY - this.height;
+          this.vy = 0;
+          this.onGround = true;
+        } else {
+          this.onGround = false;
+        }
+
+        this.x = clamp(this.x, 0, canvas.width - this.width);
+
+        if (this.attackCooldown > 0) this.attackCooldown--;
+        if (this.hitCooldown > 0) this.hitCooldown--;
+
+        if (this.isAttacking) {
+          this.attackFrames--;
+          if (this.attackFrames <= 0) {
+            this.isAttacking = false;
+          }
+        }
+
+        if (this.isAttacking && this.hitCooldown === 0 && this.collidesWith(opponent)) {
+          opponent.takeHit(10, this.facing);
+          this.hitCooldown = this.attackDuration;
+        }
+      }
+
+      jump() {
+        if (this.onGround && !gameOver && gameStarted) {
+          this.vy = this.jumpForce;
+          this.onGround = false;
+        }
+      }
+
+      attack() {
+        if (this.attackCooldown === 0 && !gameOver && gameStarted) {
+          this.isAttacking = true;
+          this.attackFrames = this.attackDuration;
+          this.attackCooldown = 22;
+          this.hitCooldown = 0;
+        }
+      }
+
+      takeHit(damage, direction) {
+        this.health = Math.max(0, this.health - damage);
+        this.x += direction * 18;
+        if (this.health <= 0) {
+          endGame();
+        }
+      }
+
+      collidesWith(opponent) {
+        const a = this.attackBox;
+        const b = {
+          x: opponent.x,
+          y: opponent.y,
+          width: opponent.width,
+          height: opponent.height
+        };
+
+        return (
+          a.x < b.x + b.width &&
+          a.x + a.width > b.x &&
+          a.y < b.y + b.height &&
+          a.y + a.height > b.y
+        );
+      }
+
+      draw() {
+        // sombra
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.beginPath();
+        ctx.ellipse(this.x + this.width / 2, floorY + 8, 42, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // cuerpo
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y + 20, this.width, this.height - 20);
+
+        // cabeza
+        ctx.fillStyle = '#ffd6b3';
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + 18, 24, 0, Math.PI * 2);
+        ctx.fill();
+
+        // ojos
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2 - 8, this.y + 15, 2.5, 0, Math.PI * 2);
+        ctx.arc(this.x + this.width / 2 + 8, this.y + 15, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // piernas
+        ctx.fillStyle = '#111827';
+        ctx.fillRect(this.x + 10, this.y + this.height, 16, 34);
+        ctx.fillRect(this.x + this.width - 26, this.y + this.height, 16, 34);
+
+        // brazos
+        ctx.fillStyle = '#ffd6b3';
+        const armY = this.y + 55;
+        ctx.fillRect(this.x - 10, armY, 12, 40);
+        ctx.fillRect(this.x + this.width - 2, armY, 12, 40);
+
+        // golpe
+        if (this.isAttacking) {
+          const a = this.attackBox;
+          ctx.fillStyle = 'rgba(255,255,255,0.28)';
+          ctx.fillRect(a.x, a.y, a.width, a.height);
+
+          ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          if (this.facing === 1) {
+            ctx.moveTo(this.x + this.width, armY + 10);
+            ctx.lineTo(a.x + a.width, a.y + 10);
+          } else {
+            ctx.moveTo(this.x, armY + 10);
+            ctx.lineTo(a.x, a.y + 10);
+          }
+          ctx.stroke();
+        }
+
+        // nombre
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.name, this.x + this.width / 2, this.y - 10);
+      }
+    }
+
+    const player1 = new Fighter({
+      x: 180,
+      y: floorY - 140,
+      color: '#2563eb',
+      name: 'Jugador 1',
+      controls: { left: 'a', right: 'd', jump: 'w', attack: 'f' },
+      facing: 1
+    });
+
+    const player2 = new Fighter({
+      x: 850,
+      y: floorY - 140,
+      color: '#dc2626',
+      name: 'Jugador 2',
+      controls: { left: 'ArrowLeft', right: 'ArrowRight', jump: 'ArrowUp', attack: 'l' },
+      facing: -1
+    });
+
+    function drawBackground() {
+      // sol
+      ctx.fillStyle = 'rgba(255, 230, 120, 0.9)';
+      ctx.beginPath();
+      ctx.arc(920, 90, 45, 0, Math.PI * 2);
+      ctx.fill();
+
+      // montañas
+      ctx.fillStyle = '#6b7280';
+      ctx.beginPath();
+      ctx.moveTo(20, 350);
+      ctx.lineTo(180, 180);
+      ctx.lineTo(340, 350);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(250, 350);
+      ctx.lineTo(450, 140);
+      ctx.lineTo(650, 350);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(560, 350);
+      ctx.lineTo(760, 190);
+      ctx.lineTo(960, 350);
+      ctx.fill();
+
+      // plataforma suelo
+      ctx.fillStyle = '#8b5a2b';
+      ctx.fillRect(0, floorY, canvas.width, canvas.height - floorY);
+
+      // línea decorativa
+      ctx.fillStyle = 'rgba(255,255,255,0.1)';
+      for (let i = 0; i < canvas.width; i += 60) {
+        ctx.fillRect(i, floorY + 30, 30, 4);
+      }
+    }
+
+    function updateHUD() {
+      p1HealthEl.style.width = `${player1.health}%`;
+      p2HealthEl.style.width = `${player2.health}%`;
+      timerEl.textContent = timer;
+    }
+
+    function startGame() {
+      player1.reset(180, 1);
+      player2.reset(850, -1);
+      timer = 60;
+      gameStarted = true;
+      gameOver = false;
+      overlay.classList.add('hidden');
+      updateHUD();
+
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (!gameStarted || gameOver) return;
+        timer--;
+        updateHUD();
+        if (timer <= 0) {
+          endGame();
+        }
+      }, 1000);
+    }
+
+    function endGame() {
+      gameOver = true;
+      gameStarted = false;
+      clearInterval(timerInterval);
+
+      let result = 'Empate';
+      if (player1.health > player2.health) result = 'Ganó Jugador 1';
+      if (player2.health > player1.health) result = 'Ganó Jugador 2';
+
+      messageBox.innerHTML = `
+        <h1>${result}</h1>
+        <p>Jugador 1: ${player1.health} HP | Jugador 2: ${player2.health} HP</p>
+        <p>Presiona <span class="kbd">ENTER</span> para volver a jugar.</p>
+        <div class="controls">
+          <div>
+            <strong>Jugador 1</strong><br>
+            <span class="kbd">A</span> izquierda
+            <span class="kbd">D</span> derecha
+            <span class="kbd">W</span> salto
+            <span class="kbd">F</span> golpe
+          </div>
+          <div>
+            <strong>Jugador 2</strong><br>
+            <span class="kbd">←</span> izquierda
+            <span class="kbd">→</span> derecha
+            <span class="kbd">↑</span> salto
+            <span class="kbd">L</span> golpe
+          </div>
+        </div>
+      `;
+      overlay.classList.remove('hidden');
+    }
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBackground();
+
+      player1.update(player2);
+      player2.update(player1);
+
+      player1.draw();
+      player2.draw();
+
+      updateHUD();
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      keys[e.key] = true;
+
+      if (e.key === 'Enter') {
+        startGame();
+      }
+
+      if (e.key === player1.controls.jump) player1.jump();
+      if (e.key === player2.controls.jump) player2.jump();
+      if (e.key === player1.controls.attack) player1.attack();
+      if (e.key === player2.controls.attack) player2.attack();
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.key] = false;
+    });
+
+    updateHUD();
+    gameLoop();
+  </script>
+</body>
+</html>
