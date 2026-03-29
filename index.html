@@ -6,6 +6,7 @@
   <title>Juego de Pelea - ISAM Fight</title>
   <style>
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
@@ -153,9 +154,11 @@
         flex-direction: column;
         align-items: stretch;
       }
+
       .controls {
         grid-template-columns: 1fr;
       }
+
       .message h1 { font-size: 26px; }
       .timer { font-size: 24px; }
     }
@@ -165,25 +168,33 @@
   <div class="game-wrapper">
     <div class="hud">
       <div class="panel health-box">
-        <div class="label">Jugador 1</div>
-        <div class="health-bar"><div id="p1Health" class="health-fill p1-health"></div></div>
+        <div class="label">Panchin</div>
+        <div class="health-bar">
+          <div id="p1Health" class="health-fill p1-health"></div>
+        </div>
       </div>
+
       <div class="panel timer" id="timer">60</div>
+
       <div class="panel health-box">
         <div class="label">Jugador 2</div>
-        <div class="health-bar"><div id="p2Health" class="health-fill p2-health"></div></div>
+        <div class="health-bar">
+          <div id="p2Health" class="health-fill p2-health"></div>
+        </div>
       </div>
     </div>
 
     <div class="canvas-wrap">
       <canvas id="game" width="1100" height="600"></canvas>
+
       <div class="overlay" id="overlay">
         <div class="message" id="messageBox">
           <h1>ISAM Fight</h1>
-          <p>Juego de pelea simple en HTML, CSS y JavaScript listo para subir a Vercel.</p>
+          <p>Juego de pelea simple en HTML, CSS y JavaScript.</p>
+
           <div class="controls">
             <div>
-              <strong>Jugador 1</strong><br>
+              <strong>Panchin</strong><br>
               <span class="kbd">A</span> izquierda
               <span class="kbd">D</span> derecha
               <span class="kbd">W</span> salto
@@ -197,12 +208,15 @@
               <span class="kbd">L</span> golpe
             </div>
           </div>
+
           <p>Presiona <span class="kbd">ENTER</span> para comenzar o reiniciar.</p>
         </div>
       </div>
     </div>
 
-    <div class="footer">Puedes cambiar colores, nombres, escenario y personajes fácilmente desde el código.</div>
+    <div class="footer">
+      Sube también el archivo Panchin.png junto con este index.html
+    </div>
   </div>
 
   <script>
@@ -224,20 +238,24 @@
     let timer = 60;
     let timerInterval = null;
 
+    const player1Image = new Image();
+    player1Image.src = "Panchin.png";
+
     function clamp(value, min, max) {
       return Math.max(min, Math.min(max, value));
     }
 
     class Fighter {
-      constructor({ x, y, color, name, controls, facing = 1 }) {
+      constructor({ x, y, color, name, controls, facing = 1, image = null }) {
         this.x = x;
         this.y = y;
-        this.width = 70;
-        this.height = 140;
+        this.width = image ? 130 : 70;
+        this.height = image ? 260 : 140;
         this.color = color;
         this.name = name;
         this.controls = controls;
         this.facing = facing;
+        this.image = image;
 
         this.vx = 0;
         this.vy = 0;
@@ -251,14 +269,19 @@
         this.onGround = false;
         this.attackDuration = 12;
         this.attackFrames = 0;
+
+        this.animTime = 0;
+        this.walkBounce = 0;
+        this.walkTilt = 0;
+        this.punchOffset = 0;
       }
 
       get attackBox() {
-        const attackWidth = 55;
-        const attackHeight = 30;
+        const attackWidth = this.image ? 65 : 55;
+        const attackHeight = this.image ? 40 : 30;
         return {
-          x: this.facing === 1 ? this.x + this.width : this.x - attackWidth,
-          y: this.y + 40,
+          x: this.facing === 1 ? this.x + this.width - 10 : this.x - attackWidth + 10,
+          y: this.image ? this.y + 80 : this.y + 40,
           width: attackWidth,
           height: attackHeight
         };
@@ -275,6 +298,10 @@
         this.attackCooldown = 0;
         this.hitCooldown = 0;
         this.attackFrames = 0;
+        this.animTime = 0;
+        this.walkBounce = 0;
+        this.walkTilt = 0;
+        this.punchOffset = 0;
       }
 
       update(opponent) {
@@ -286,6 +313,7 @@
           this.vx = -this.speed;
           this.facing = -1;
         }
+
         if (keys[this.controls.right]) {
           this.vx = this.speed;
           this.facing = 1;
@@ -314,6 +342,18 @@
             this.isAttacking = false;
           }
         }
+
+        this.animTime += 0.18;
+
+        if (Math.abs(this.vx) > 0 && this.onGround) {
+          this.walkBounce = Math.sin(this.animTime * 8) * 6;
+          this.walkTilt = Math.sin(this.animTime * 8) * 0.03;
+        } else {
+          this.walkBounce *= 0.75;
+          this.walkTilt *= 0.75;
+        }
+
+        this.punchOffset = this.isAttacking ? 18 : 0;
 
         if (this.isAttacking && this.hitCooldown === 0 && this.collidesWith(opponent)) {
           opponent.takeHit(10, this.facing);
@@ -363,60 +403,81 @@
       }
 
       draw() {
-        // sombra
+        const centerX = this.x + this.width / 2;
+
         ctx.fillStyle = 'rgba(0,0,0,0.2)';
         ctx.beginPath();
-        ctx.ellipse(this.x + this.width / 2, floorY + 8, 42, 10, 0, 0, Math.PI * 2);
+        ctx.ellipse(centerX, floorY + 8, 42, 10, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // cuerpo
-        ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, this.y + 20, this.width, this.height - 20);
+        if (this.image && this.image.complete) {
+          ctx.save();
 
-        // cabeza
-        ctx.fillStyle = '#ffd6b3';
-        ctx.beginPath();
-        ctx.arc(this.x + this.width / 2, this.y + 18, 24, 0, Math.PI * 2);
-        ctx.fill();
+          const drawX = this.x + this.width / 2;
+          const drawY = this.y + this.height / 2 + this.walkBounce;
 
-        // ojos
-        ctx.fillStyle = '#111';
-        ctx.beginPath();
-        ctx.arc(this.x + this.width / 2 - 8, this.y + 15, 2.5, 0, Math.PI * 2);
-        ctx.arc(this.x + this.width / 2 + 8, this.y + 15, 2.5, 0, Math.PI * 2);
-        ctx.fill();
+          ctx.translate(drawX, drawY);
+          ctx.scale(this.facing, 1);
+          ctx.rotate(this.walkTilt);
 
-        // piernas
-        ctx.fillStyle = '#111827';
-        ctx.fillRect(this.x + 10, this.y + this.height, 16, 34);
-        ctx.fillRect(this.x + this.width - 26, this.y + this.height, 16, 34);
+          ctx.drawImage(
+            this.image,
+            -this.width / 2 + (this.facing === 1 ? this.punchOffset : -this.punchOffset),
+            -this.height / 2,
+            this.width,
+            this.height
+          );
 
-        // brazos
-        ctx.fillStyle = '#ffd6b3';
-        const armY = this.y + 55;
-        ctx.fillRect(this.x - 10, armY, 12, 40);
-        ctx.fillRect(this.x + this.width - 2, armY, 12, 40);
+          ctx.restore();
 
-        // golpe
-        if (this.isAttacking) {
-          const a = this.attackBox;
-          ctx.fillStyle = 'rgba(255,255,255,0.28)';
-          ctx.fillRect(a.x, a.y, a.width, a.height);
-
-          ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          if (this.facing === 1) {
-            ctx.moveTo(this.x + this.width, armY + 10);
-            ctx.lineTo(a.x + a.width, a.y + 10);
-          } else {
-            ctx.moveTo(this.x, armY + 10);
-            ctx.lineTo(a.x, a.y + 10);
+          if (this.isAttacking) {
+            const a = this.attackBox;
+            ctx.fillStyle = 'rgba(255,255,255,0.18)';
+            ctx.fillRect(a.x, a.y, a.width, a.height);
           }
-          ctx.stroke();
+        } else {
+          ctx.fillStyle = this.color;
+          ctx.fillRect(this.x, this.y + 20, this.width, this.height - 20);
+
+          ctx.fillStyle = '#ffd6b3';
+          ctx.beginPath();
+          ctx.arc(this.x + this.width / 2, this.y + 18, 24, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#111';
+          ctx.beginPath();
+          ctx.arc(this.x + this.width / 2 - 8, this.y + 15, 2.5, 0, Math.PI * 2);
+          ctx.arc(this.x + this.width / 2 + 8, this.y + 15, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#111827';
+          ctx.fillRect(this.x + 10, this.y + this.height, 16, 34);
+          ctx.fillRect(this.x + this.width - 26, this.y + this.height, 16, 34);
+
+          ctx.fillStyle = '#ffd6b3';
+          const armY = this.y + 55;
+          ctx.fillRect(this.x - 10, armY, 12, 40);
+          ctx.fillRect(this.x + this.width - 2, armY, 12, 40);
+
+          if (this.isAttacking) {
+            const a = this.attackBox;
+            ctx.fillStyle = 'rgba(255,255,255,0.28)';
+            ctx.fillRect(a.x, a.y, a.width, a.height);
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            if (this.facing === 1) {
+              ctx.moveTo(this.x + this.width, armY + 10);
+              ctx.lineTo(a.x + a.width, a.y + 10);
+            } else {
+              ctx.moveTo(this.x, armY + 10);
+              ctx.lineTo(a.x, a.y + 10);
+            }
+            ctx.stroke();
+          }
         }
 
-        // nombre
         ctx.fillStyle = 'rgba(255,255,255,0.95)';
         ctx.font = 'bold 16px Arial';
         ctx.textAlign = 'center';
@@ -426,11 +487,12 @@
 
     const player1 = new Fighter({
       x: 180,
-      y: floorY - 140,
+      y: floorY - 260,
       color: '#2563eb',
-      name: 'Jugador 1',
+      name: 'Panchin',
       controls: { left: 'a', right: 'd', jump: 'w', attack: 'f' },
-      facing: 1
+      facing: 1,
+      image: player1Image
     });
 
     const player2 = new Fighter({
@@ -443,13 +505,11 @@
     });
 
     function drawBackground() {
-      // sol
       ctx.fillStyle = 'rgba(255, 230, 120, 0.9)';
       ctx.beginPath();
       ctx.arc(920, 90, 45, 0, Math.PI * 2);
       ctx.fill();
 
-      // montañas
       ctx.fillStyle = '#6b7280';
       ctx.beginPath();
       ctx.moveTo(20, 350);
@@ -469,11 +529,9 @@
       ctx.lineTo(960, 350);
       ctx.fill();
 
-      // plataforma suelo
       ctx.fillStyle = '#8b5a2b';
       ctx.fillRect(0, floorY, canvas.width, canvas.height - floorY);
 
-      // línea decorativa
       ctx.fillStyle = 'rgba(255,255,255,0.1)';
       for (let i = 0; i < canvas.width; i += 60) {
         ctx.fillRect(i, floorY + 30, 30, 4);
@@ -512,16 +570,16 @@
       clearInterval(timerInterval);
 
       let result = 'Empate';
-      if (player1.health > player2.health) result = 'Ganó Jugador 1';
+      if (player1.health > player2.health) result = 'Ganó Panchin';
       if (player2.health > player1.health) result = 'Ganó Jugador 2';
 
       messageBox.innerHTML = `
         <h1>${result}</h1>
-        <p>Jugador 1: ${player1.health} HP | Jugador 2: ${player2.health} HP</p>
+        <p>Panchin: ${player1.health} HP | Jugador 2: ${player2.health} HP</p>
         <p>Presiona <span class="kbd">ENTER</span> para volver a jugar.</p>
         <div class="controls">
           <div>
-            <strong>Jugador 1</strong><br>
+            <strong>Panchin</strong><br>
             <span class="kbd">A</span> izquierda
             <span class="kbd">D</span> derecha
             <span class="kbd">W</span> salto
